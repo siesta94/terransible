@@ -12,7 +12,7 @@ resource "aws_vpc" "wp_vpc" {
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-  tags {
+  tags = {
     Name = "wp_vpc"
   }
 }
@@ -21,7 +21,7 @@ resource "aws_vpc" "wp_vpc" {
 resource "aws_internet_gateway" "wp_internet_gateway" {
   vpc_id = "${aws_vpc.wp_vpc.id}"
 
-  tags {
+  tags = {
     Name = "wp_igw"
   }
 }
@@ -35,7 +35,7 @@ resource "aws_route_table" "wp_public_rt" {
     gateway_id = "${aws_internet_gateway.wp_internet_gateway.id}"
   }
 
-  tags {
+  tags = {
     Name = "wp_public_rt"
   }
 }
@@ -43,7 +43,7 @@ resource "aws_route_table" "wp_public_rt" {
 resource "aws_default_route_table" "wp_private_rt" {
   default_route_table_id = "${aws_vpc.wp_vpc.default_route_table_id}"
 
-  tags {
+  tags = {
     Name = "wp_private_rt"
   }
 }
@@ -55,7 +55,7 @@ resource "aws_subnet" "wp_public1_subnet" {
   map_public_ip_on_launch = true
   availability_zone       = "${data.aws_availability_zones.available.names[0]}"
 
-  tags {
+  tags = {
     Name = "wp_public1"
   }
 }
@@ -66,7 +66,7 @@ resource "aws_subnet" "wp_public2_subnet" {
   map_public_ip_on_launch = true
   availability_zone       = "${data.aws_availability_zones.available.names[1]}"
 
-  tags {
+  tags = {
     Name = "wp_public2"
   }
 }
@@ -77,7 +77,7 @@ resource "aws_subnet" "wp_private1_subnet" {
   map_public_ip_on_launch = false
   availability_zone       = "${data.aws_availability_zones.available.names[0]}"
 
-  tags {
+  tags = {
     Name = "wp_private1"
   }
 }
@@ -88,7 +88,7 @@ resource "aws_subnet" "wp_private2_subnet" {
   map_public_ip_on_launch = false
   availability_zone       = "${data.aws_availability_zones.available.names[1]}"
 
-  tags {
+  tags = {
     Name = "wp_private2"
   }
 }
@@ -99,7 +99,7 @@ resource "aws_subnet" "wp_rds1_subnet" {
   map_public_ip_on_launch = false
   availability_zone       = "${data.aws_availability_zones.available.names[0]}"
 
-  tags {
+  tags = {
     Name = "wp_rds1"
   }
 }
@@ -110,7 +110,7 @@ resource "aws_subnet" "wp_rds2_subnet" {
   map_public_ip_on_launch = false
   availability_zone       = "${data.aws_availability_zones.available.names[1]}"
 
-  tags {
+  tags = {
     Name = "wp_rds2"
   }
 }
@@ -121,7 +121,7 @@ resource "aws_subnet" "wp_rds3_subnet" {
   map_public_ip_on_launch = false
   availability_zone       = "${data.aws_availability_zones.available.names[1]}"
 
-  tags {
+  tags = {
     Name = "wp_rds3"
   }
 }
@@ -133,7 +133,7 @@ resource "aws_db_subnet_group" "wp_rds_subnetgroup" {
 
   subnet_ids = ["${aws_subnet.wp_rds1_subnet.id}", "${aws_subnet.wp_rds2_subnet.id}", "${aws_subnet.wp_rds3_subnet.id}"]
 
-  tags {
+  tags = {
     Name = "wp_rds_sng"
   }
 }
@@ -158,4 +158,19 @@ resource "aws_route_table_association" "wp_private1_assoc" {
 resource "aws_route_table_association" "wp_private2_assoc" {
   subnet_id      = "${aws_subnet.wp_private2_subnet.id}"
   route_table_id = "${aws_default_route_table.wp_private_rt.id}"
+}
+
+#Security Groups
+
+resource "aws_security_group" "public_sg"{
+  name   = "Allow_public_traffic"
+  vpc_id = "${aws_vpc.wp_vpc.id}"
+  
+  ingress{
+    from_port = 80
+    to_port   = 80
+    protocol  = "tcp"
+
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
