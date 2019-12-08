@@ -160,6 +160,7 @@ resource "aws_route_table_association" "wp_private2_assoc" {
   route_table_id = "${aws_default_route_table.wp_private_rt.id}"
 }
 
+
 #Security Groups
 
 resource "aws_security_group" "public_sg"{
@@ -188,3 +189,93 @@ resource "aws_security_group" "public_sg"{
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
+
+resource "aws_security_group" "wp_rds_sg" {
+	name = "wp_rds_sg"
+        vpc_id = "${aws_vpc.wp_vpc.id}"
+	
+	ingress {
+	  from_port = 3306
+          to_port = 3306
+          protocol = "tcp"
+	  
+          security_groups = ["${aws_security_group.public_sg.id}"]
+	}
+}
+
+resource "aws_key_pair" "my_key"{
+	key_name = "wp_key"
+	public_key = "${var.wp_key}"
+}
+
+resource "aws_instance" "wp_web"{
+	count = "${var.instance_count}"
+	ami           = "${var.wp_image}"
+	instance_type = "${var.ec-2_type}"
+	key_name = "wp_key"
+
+	tags = {
+	  Name = "Wordpress_web_server"
+	}
+	
+	vpc_security_group_ids = ["${aws_security_group.public_sg.id}"]
+	subnet_id	       = "${aws_subnet.wp_public1_subnet.id}"
+
+	provisioner "local-exec" {
+          command = <<EOD
+cat <<EOF >> aws_hosts  
+"${self.public_ip}"
+EOF
+EOD
+	}	
+
+	provisioner "local-exec" {
+          command = "aws ec2 wait instance-status-ok --instance-ids ${self.id} --profile basic && ansible-playbook -i aws_hosts wpinstall.yml"
+  }
+}
+
+#resource "aws_db_instance" "wp_db" {
+#	allocated_storage = 10
+#	engine = "mysql"
+#        engine_version = "5.7.22"
+#        instance_class = "${var.db_instance_class}"
+#	name           = "${var.dbname}"
+#        username       = "${var.dbuser}"
+#        password       = "${var.dbpassword}"
+#        db_subnet_group_name = "${aws_db_subnet_group.wp_rds_subnetgroup.name}"
+#        vpc_security_group_ids = ["${aws_security_group.wp_rds_sg.id}"]
+#	skip_final_snapshot = true
+#}
+
+resource "aws_elb" "wp_lb" {
+  name               = "wp-lb"
+  count = "${var.instance_count}"
+  subnets = ["${aws_subnet.wp_public1_subnet.id}", "${aws_subnet.wp_public2_subnet.id}"]
+  security_groups = ["${aws_security_group.public_sg.id}"]
+
+  listener {
+    instance_port     = 80
+    instance_protocol = "http"
+    lb_port           = 80
+    lb_protocol       = "http"
+  }
+
+  health_check {
+    healthy_threshold   = 10
+    unhealthy_threshold = 10
+    timeout             = 30
+    target              = "TCP:80"
+    interval            = 30
+  }
+
+  instances                   = ["${aws_instance.wp_web[count.index].id}"]
+  cross_zone_load_balancing   = true
+  idle_timeout                = 400
+  connection_draining         = true
+  connection_draining_timeout = 400
+
+  tags = {
+    Name = "wp-lb"
+  }
+}
+
