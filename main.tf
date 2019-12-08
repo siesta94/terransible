@@ -249,7 +249,6 @@ EOD
 
 resource "aws_elb" "wp_lb" {
   name               = "wp-lb"
-  count = "${var.instance_count}"
   subnets = ["${aws_subnet.wp_public1_subnet.id}", "${aws_subnet.wp_public2_subnet.id}"]
   security_groups = ["${aws_security_group.public_sg.id}"]
 
@@ -262,13 +261,13 @@ resource "aws_elb" "wp_lb" {
 
   health_check {
     healthy_threshold   = 10
-    unhealthy_threshold = 10
-    timeout             = 30
+    unhealthy_threshold = 2
+    timeout             = 5
     target              = "TCP:80"
     interval            = 30
   }
 
-  instances                   = ["${aws_instance.wp_web[count.index].id}"]
+  instances                   = ["${aws_instance.wp_web[0].id}", "${aws_instance.wp_web[1].id}"]
   cross_zone_load_balancing   = true
   idle_timeout                = 400
   connection_draining         = true
