@@ -229,9 +229,21 @@ EOF
 EOD
 	}	
 
+	user_data = <<-EOF
+		    #!/bin/bash
+		    sudo apt-get update
+                    sudo apt-get install -y git binutils make
+		    git clone https://github.com/aws/efs-utils
+		    cd efs-utils && make deb
+	 	    sudo apt-get install -y ./build/amazon-efs-utils*deb
+		    EOF
+
 	provisioner "local-exec" {
-          command = "aws ec2 wait instance-status-ok --instance-ids ${self.id} --profile basic && ansible-playbook -i aws_hosts wpinstall.yml"
+          command = "aws ec2 wait instance-status-ok --instance-ids ${self.id} --profile basic && ansible-playbook -i aws_hosts httpd.yml"
   }
+	provisioner "local-exec" {
+	  command = "aws ec2 wait instance-status-ok --instance-ids ${self.id} --profile basic && ansible-playbook -i aws_hosts wpinsta.yml"
+  } 
 }
 
 #resource "aws_db_instance" "wp_db" {
@@ -278,3 +290,38 @@ resource "aws_elb" "wp_lb" {
   }
 }
 
+resource "aws_security_group" "wp_efs_security_grp" {
+	name = "Allow_EFS"
+	vpc_id = "${aws_vpc.wp_vpc.id}"
+
+	ingress {
+	  security_groups = ["${aws_security_group.public_sg.id}"]
+	  from_port = 2049
+	  to_port = 2049
+	  protocol = "tcp"
+	}
+
+	egress {
+	  security_groups = ["${aws_security_group.public_sg.id}"]
+	  from_port = 0
+	  to_port = 0
+	  protocol = "-1"
+	}
+}
+
+resource "aws_efs_file_system" "wp_efs" {
+	creation_token = "wp-efs-token"
+	performance_mode = "generalPurpose"
+	throughput_mode = "bursting"
+	encrypted = "true"
+	
+	tags = {
+	  Name = "EFS"
+	}
+}
+
+resource "aws_efs_mount_target" "wp_efs_mt" {
+	file_system_id = "${aws_efs_file_system.wp_efs.id}"
+	subnet_id = "${aws_subnet.wp_public1_subnet.id}"
+	security_groups = ["${aws_security_group.wp_efs_security_grp.id}"]
+}

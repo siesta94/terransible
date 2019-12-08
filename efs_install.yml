@@ -1,0 +1,24 @@
+---
+- hosts: dev
+  become: yes
+  remote_user: ubuntu
+  tasks:
+    - name: Install Ubuntu build dependencies
+      apt:
+        name: binutils
+	update_cache: yes
+
+    - include_tasks: download-source.yml
+
+    - name: build deb package
+      shell: ./build-deb.sh
+      args:
+        chdir: "{{ efs_utils_source_dir }}"
+        creates: build/amazon-efs-utils*deb
+
+    - name: install deb package
+      shell: apt -y install ./build/amazon-efs-utils*deb
+      args:
+        chdir: "{{ efs_utils_source_dir }}"
+      register: efs_utils_pkg_install
+      changed_when: '"Unpacking amazon-efs-utils" in efs_utils_pkg_install.stdout'

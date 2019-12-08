@@ -1,0 +1,14 @@
+---
+# tasks to download source code before building for distro
+
+- name: download and unpack source from offical Github repo
+  unarchive:
+    src: "https://github.com/aws/efs-utils/tarball/master"
+    dest: "/tmp"
+    list_files: yes  # Includes destination folder name
+    remote_src: yes
+  register: efs_utils_archive
+
+- name: store location of unarchived source dir
+  set_fact:
+    efs_utils_source_dir: "{{ efs_utils_archive.dest }}/{{ efs_utils_archive.files[0] }}"

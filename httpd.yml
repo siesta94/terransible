@@ -1,0 +1,20 @@
+---
+- hosts: dev
+  become: yes
+  remote_user: ubuntu
+  tasks:
+    - name: Update Cache
+      apt:
+        name: php7.2
+        update_cache: yes
+    - name: Install Apache.
+      apt: name={{ item }} state=present
+      with_items:
+      - apache2
+      - php7.2-mysql
+    - name: Restart Apache2
+      service:
+        name: apache2
+        state: restarted
+    - name: Make sure Apache is started now and at boot.
+      service: name=apache2 state=started enabled=yes

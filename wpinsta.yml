@@ -3,15 +3,6 @@
   become: yes
   remote_user: ubuntu
   tasks:
-    - name: Update Cache
-      apt:
-        name: php7.2
-        update_cache: yes
-    - name: Install Apache.
-      apt: name={{ item }} state=present
-      with_items:
-      - apache2
-      - php7.2-mysql
     - name: Download WordPress
       get_url: url=http://wordpress.org/wordpress-latest.tar.gz dest=/var/www/html/wordpress.tar.gz force=yes
     - name: Extract WordPress
@@ -25,9 +16,3 @@
         recurse: yes
         owner: www-data
         group: www-data
-    - name: Restart Apache2
-      service:
-        name: apache2
-        state: restarted
-    - name: Make sure Apache is started now and at boot.
-      service: name=apache2 state=started enabled=yes
