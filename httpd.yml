@@ -16,6 +16,13 @@
       service:
         name: apache2
         state: restarted
+    - name: Make my directory tree readable
+      file:
+        path: /var/www/html/
+        mode: u=rwX,g=rX,o=rX
+        recurse: yes
+        owner: www-data
+        group: www-data
     - name: Make sure Apache is started now and at boot.
       service: name=apache2 state=started enabled=yes
     - name: Reboot machine to mount all volumes
