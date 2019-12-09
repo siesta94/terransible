@@ -3,10 +3,7 @@ provider "aws" {
   profile = "${var.aws_profile}"
 }
 
-#IAM IF NEEDED
-#END OF IAM
-
-#Create VPC
+### Create VPC ###
 resource "aws_vpc" "wp_vpc" {
   cidr_block           = "${var.vpc_cidr}"
   enable_dns_hostnames = true
@@ -17,7 +14,7 @@ resource "aws_vpc" "wp_vpc" {
   }
 }
 
-#Create IG (internet gateway)
+### Create IG (internet gateway) ###
 resource "aws_internet_gateway" "wp_internet_gateway" {
   vpc_id = "${aws_vpc.wp_vpc.id}"
 
@@ -26,7 +23,7 @@ resource "aws_internet_gateway" "wp_internet_gateway" {
   }
 }
 
-#Create route tables
+### Create route tables ###
 resource "aws_route_table" "wp_public_rt" {
   vpc_id = "${aws_vpc.wp_vpc.id}"
 
@@ -48,7 +45,7 @@ resource "aws_default_route_table" "wp_private_rt" {
   }
 }
 
-#Create subnets
+### Create subnets ###
 resource "aws_subnet" "wp_public1_subnet" {
   vpc_id                  = "${aws_vpc.wp_vpc.id}"
   cidr_block              = "${var.cidrs["public1"]}"
@@ -126,7 +123,7 @@ resource "aws_subnet" "wp_rds3_subnet" {
   }
 }
 
-#RDS Subnet Group
+### RDS Subnet Group ###
 
 resource "aws_db_subnet_group" "wp_rds_subnetgroup" {
   name = "wp_rds_subnetgrou"
@@ -138,7 +135,7 @@ resource "aws_db_subnet_group" "wp_rds_subnetgroup" {
   }
 }
 
-#Assosiate subnets to RT
+### Assosiate subnets to RT ###
 
 resource "aws_route_table_association" "wp_public1_assoc" {
   subnet_id      = "${aws_subnet.wp_public1_subnet.id}"
@@ -161,7 +158,7 @@ resource "aws_route_table_association" "wp_private2_assoc" {
 }
 
 
-#Security Groups
+### Security Groups ###
 
 resource "aws_security_group" "public_sg"{
   name   = "Allow_public_traffic"
@@ -203,6 +200,53 @@ resource "aws_security_group" "wp_rds_sg" {
 	}
 }
 
+resource "aws_security_group" "wp_efs_security_grp" {
+        name = "Allow_EFS"
+        vpc_id = "${aws_vpc.wp_vpc.id}"
+
+        ingress {
+          security_groups = ["${aws_security_group.public_sg.id}"]
+          from_port = 2049
+          to_port = 2049
+          protocol = "tcp"
+        }
+
+        egress {
+          security_groups = ["${aws_security_group.public_sg.id}"]
+          from_port = 0
+          to_port = 0
+          protocol = "-1"
+        }
+}
+
+### EFS Create ###
+
+resource "aws_efs_file_system" "wp_efs" {
+       creation_token = "wp-efs-token"
+       performance_mode = "generalPurpose"
+       throughput_mode = "bursting"
+       encrypted = "true"
+
+       tags = {
+         Name = "EFS"
+       }
+}
+
+resource "aws_efs_mount_target" "wp_efs_mt" {
+       file_system_id = "${aws_efs_file_system.wp_efs.id}"
+       subnet_id = "${aws_subnet.wp_public1_subnet.id}"
+       security_groups = ["${aws_security_group.wp_efs_security_grp.id}"]
+}
+
+data "template_file" "script" {
+  template = "${file("script.tpl")}"
+  vars = {
+    efs_id = "${aws_efs_file_system.wp_efs.id}"
+  }
+}
+
+### COMPUTE ###
+
 resource "aws_key_pair" "my_key"{
 	key_name = "wp_key"
 	public_key = "${var.wp_key}"
@@ -216,7 +260,7 @@ resource "aws_instance" "wp_web"{
 	user_data = "${data.template_file.script.rendered}"
 
 	tags = {
-	  Name = "Wordpress_web_server"
+	  Name = "Wordpress_web_server-${count.index + 1}"
 	}
 	
 	vpc_security_group_ids = ["${aws_security_group.public_sg.id}"]
@@ -282,45 +326,3 @@ resource "aws_elb" "wp_lb" {
   }
 }
 
-resource "aws_security_group" "wp_efs_security_grp" {
-	name = "Allow_EFS"
-	vpc_id = "${aws_vpc.wp_vpc.id}"
-
-	ingress {
-	  security_groups = ["${aws_security_group.public_sg.id}"]
-	  from_port = 2049
-	  to_port = 2049
-	  protocol = "tcp"
-	}
-
-	egress {
-	  security_groups = ["${aws_security_group.public_sg.id}"]
-	  from_port = 0
-	  to_port = 0
-	  protocol = "-1"
-	}
-}
-
-resource "aws_efs_file_system" "wp_efs" {
-	creation_token = "wp-efs-token"
-	performance_mode = "generalPurpose"
-	throughput_mode = "bursting"
-	encrypted = "true"
-	
-	tags = {
-	  Name = "EFS"
-	}
-}
-
-resource "aws_efs_mount_target" "wp_efs_mt" {
-	file_system_id = "${aws_efs_file_system.wp_efs.id}"
-	subnet_id = "${aws_subnet.wp_public1_subnet.id}"
-	security_groups = ["${aws_security_group.wp_efs_security_grp.id}"]
-}
-
-data "template_file" "script" {
-  template = "${file("script.tpl")}"
-  vars = {
-    efs_id = "${aws_efs_file_system.wp_efs.id}"
-  }
-}
