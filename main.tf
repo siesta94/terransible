@@ -274,9 +274,9 @@ EOF
 EOD
 	}	
 
-#	provisioner "local-exec" {
-#          command = "aws ec2 wait instance-status-ok --instance-ids ${self.id} --profile basic && ansible-playbook -i aws_hosts httpd.yml"
-#  }
+	provisioner "local-exec" {
+          command = "aws ec2 wait instance-status-ok --instance-ids ${self.id} --profile basic && ansible-playbook -i aws_hosts httpd.yml"
+  }
 #	provisioner "local-exec" {
 #	  command = "aws ec2 wait instance-status-ok --instance-ids ${self.id} --profile basic && ansible-playbook -i aws_hosts wpinsta.yml"
 #  } 
