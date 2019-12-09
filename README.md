@@ -14,7 +14,9 @@ After terraform apply is finished successfully you will have to edit aws_hosts f
 
 Now we can open browser and navigate to load balancer (load_balancer_dns from terraform output): `load_balancer_dns = wp-lb-206979940.us-east-1.elb.amazonaws.com` (example) and start installing wordpress. Database credentials are provided in terraform.tfvars file and RDS endpoint is in terraform output: `db_end_point = terraform-20191209152043694100000001.colzzv0sjeg0.us-east-1.rds.amazonaws.com:3306` (example).
 
-Infrastructure:
+Wordpress is being provisioned last and manually, since this is usable LAMP stack you can easily deploy any application you want.
+
+# Infrastructure:
 * VPC with 6 subnets - 2x public subnets 2x private subnets 3x rds subnets that are part of rds_subnet_group. Internet gateway and 4 route tables.
 * Infrastructure is consistent of load_balancer that forwards traffic to 2 (by default) web servers on port 80.
 * 2 (by default) web servers that are part of same VPC.
@@ -24,3 +26,8 @@ Infrastructure:
     * wp_rds_sg - Allows port 3306 from public_sg.
     * Allow_EFS (wp_efs_security_grp) - Allows traffic on port 2049 from public_sg.
 * EFS Storage which is mounted on instances under /var/www/html/.
+
+# Adding more web servers:
+* Change variable `instance_count` in terraform.tfvars to number you want.
+* Open main.tf in your favorite text editor (VIM) and search for "instances" under resource "aws_elb" "wp_lb". Simply add more instances now to this array: `["${aws_instance.wp_web[0].id}", "${aws_instance.wp_web[1].id}", "${aws_instance.wp_web[2].id}", "${aws_instance.wp_web[?].id}"]`
+
