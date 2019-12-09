@@ -213,6 +213,7 @@ resource "aws_instance" "wp_web"{
 	ami           = "${var.wp_image}"
 	instance_type = "${var.ec-2_type}"
 	key_name = "wp_key"
+	user_data = "${data.template_file.script.rendered}"
 
 	tags = {
 	  Name = "Wordpress_web_server"
@@ -229,21 +230,12 @@ EOF
 EOD
 	}	
 
-	user_data = <<-EOF
-		    #!/bin/bash
-		    sudo apt-get update
-                    sudo apt-get install -y git binutils make
-		    git clone https://github.com/aws/efs-utils
-		    cd efs-utils && make deb
-	 	    sudo apt-get install -y ./build/amazon-efs-utils*deb
-		    EOF
-
-	provisioner "local-exec" {
-          command = "aws ec2 wait instance-status-ok --instance-ids ${self.id} --profile basic && ansible-playbook -i aws_hosts httpd.yml"
-  }
-	provisioner "local-exec" {
-	  command = "aws ec2 wait instance-status-ok --instance-ids ${self.id} --profile basic && ansible-playbook -i aws_hosts wpinsta.yml"
-  } 
+#	provisioner "local-exec" {
+#          command = "aws ec2 wait instance-status-ok --instance-ids ${self.id} --profile basic && ansible-playbook -i aws_hosts httpd.yml"
+#  }
+#	provisioner "local-exec" {
+#	  command = "aws ec2 wait instance-status-ok --instance-ids ${self.id} --profile basic && ansible-playbook -i aws_hosts wpinsta.yml"
+#  } 
 }
 
 #resource "aws_db_instance" "wp_db" {
@@ -324,4 +316,11 @@ resource "aws_efs_mount_target" "wp_efs_mt" {
 	file_system_id = "${aws_efs_file_system.wp_efs.id}"
 	subnet_id = "${aws_subnet.wp_public1_subnet.id}"
 	security_groups = ["${aws_security_group.wp_efs_security_grp.id}"]
+}
+
+data "template_file" "script" {
+  template = "${file("script.tpl")}"
+  vars = {
+    efs_id = "${aws_efs_file_system.wp_efs.id}"
+  }
 }
