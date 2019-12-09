@@ -274,9 +274,9 @@ EOF
 EOD
 	}	
 
-	provisioner "local-exec" {
-          command = "aws ec2 wait instance-status-ok --instance-ids ${self.id} --profile basic && ansible-playbook -i aws_hosts httpd.yml"
-  }
+#	provisioner "local-exec" {
+#          command = "aws ec2 wait instance-status-ok --instance-ids ${self.id} --profile basic && ansible-playbook -i aws_hosts httpd.yml"
+#  }
 #	provisioner "local-exec" {
 #	  command = "aws ec2 wait instance-status-ok --instance-ids ${self.id} --profile basic && ansible-playbook -i aws_hosts wpinsta.yml"
 #  } 
@@ -317,12 +317,15 @@ resource "aws_elb" "wp_lb" {
 
   instances                   = ["${aws_instance.wp_web[0].id}", "${aws_instance.wp_web[1].id}"]
   cross_zone_load_balancing   = true
-  idle_timeout                = 400
+  idle_timeout                = 600
   connection_draining         = true
-  connection_draining_timeout = 400
+  connection_draining_timeout = 600
 
   tags = {
     Name = "wp-lb"
+  }
+       provisioner "local-exec" {
+          command = "aws ec2 wait instance-status-ok --instance-ids ${aws_instance.wp_web[0].id} --profile basic && ansible-playbook -i aws_hosts httpd.yml"
   }
 }
 

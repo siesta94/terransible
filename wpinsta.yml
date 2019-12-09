@@ -7,8 +7,6 @@
       get_url: url=http://wordpress.org/wordpress-latest.tar.gz dest=/var/www/html/wordpress.tar.gz force=yes
     - name: Extract WordPress
       command: "tar xzf /var/www/html/wordpress.tar.gz -C /var/www/html --strip-components 1"
-    - name: Remove default index.html
-      command: "rm -rf /var/www/html/index.html"
     - name: Make my directory tree readable
       file:
         path: /var/www/html/
